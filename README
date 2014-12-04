@@ -1,0 +1,7 @@
+These are the source files for my Ph.D. dissertation.
+
+To view the thesis, simply download the PDF file 'thesis.pdf' included in the GitHub release.
+
+To compile the thesis, you will need LuaLaTex, the fonts specified in 'thesis.tex', and various LaTeX packages. LuaLaTeX and the packages can be found in any standard LaTeX distribution, such as TeXLive. Convenient compilation is available by running the command 'make', which uses the included Makefile, but that additionally requires the 'latexmk' program.
+
+- Ryan Volz
