@@ -1,0 +1,208 @@
+%%%% Main Thesis Style %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[12pt]{report}
+
+%\usepackage[color=blue,width=3pt,height=0.5\baselineskip]{overcolored}
+
+\usepackage[online]{styles/suthesis-2e}
+
+
+%%%% Packages %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% microtype for improved spacing and readability
+\usepackage{microtype}
+
+% lualatex-math to fix math typesetting packages with lualatex
+\usepackage{lualatex-math}
+
+% language stuff
+%\usepackage{polyglossia}
+%\setdefaultlanguage[variant=american]{english}
+\usepackage[english=american]{csquotes} % english=american needed because polyglossia support is not good yet
+\MakeOuterQuote{"}
+\MakeAutoQuote{<}{>}
+
+% cleveref needs to be before amsmath so equation references work
+\usepackage{cleveref} % for smart reference ranges
+
+% AMS math before other font stuff
+\usepackage{amsmath}
+\setcounter{MaxMatrixCols}{20} % default of 10 is too small
+\usepackage{amsfonts} % Type1 CM, blackboard bold, Fraktur, and select symbols
+\usepackage{amsthm} % add proof environment
+
+% font stuff
+\usepackage{fontspec} % enable access to system fonts
+% Mapping=tex-text not supported yet in LuaTeX
+%\defaultfontfeatures{Mapping=tex-text} % map TeX conventions for quotation marks, dashes to proper characters
+%\defaultfontfeatures{Ligatures=TeX} % map TeX conventions for quotation marks, dashes to proper characters
+% Renderer=Basic needed to fix bug with Times New Roman that prevents using dashes
+\defaultfontfeatures{Renderer=Basic,Ligatures=TeX} % map TeX conventions for quotation marks, dashes to proper characters
+
+%\setmainfont{STIXGeneral}
+\setmainfont{Times New Roman}
+%\setmainfont{Linux Libertine O} % open source Times New Roman look-alike
+%\setmainfont{TeX Gyre Bonum} % expanded URW Bookman L, like Bookman
+%\setmainfont{TeX Gyre Pagella} % expanded URW Palladio, like Palatino
+%\setmainfont{TeX Gyre Schola} % expanded URW Century Schoolbook L, like Century Schoolbook
+%\setmainfont{TeX Gyre Termes} % expanded URW Nimbus Roman No9 L, like Times New Roman
+
+\setsansfont{TeX Gyre Heros} % expanded URW Nimbus Sans, like Helvetica
+%\setsansfont{TeX Gyre Adventor} % expanded URW Gothic, like AvantGarde
+%\setsansfont[Scale=MatchLowercase]{Linux Biolinum} % similar to Optima/URW Classico which pairs well with Palatino
+% \setsansfont[Scale=MatchLowercase]{Linux Biolinum O} % similar to Optima/URW Classico which pairs well with Palatino
+
+%\setmonofont{}
+
+%\usepackage{unicode-math} % needed to specify math font
+%\setmathfont{Latin Modern Math} % OpenType version of Computer Modern
+%\setmathfont{XITS Math} % use with Times
+%\setmathfont{Asana Math} % use with Palatino/URW Palladio/TeXGyrePagella
+%\setmathfont{TeX Gyre Bonum Math} % use with URW Bookman L/Bookman
+%\setmathfont{TeX Gyre Pagella Math} % use with URW Palladio/Palatino
+%\setmathfont{TeX Gyre Schola Math} % use with URW Century Schoolbook L
+%\setmathfont{TeX Gyre Termes Math} % use with URW Nimbus Roman No9 L/Times New Roman
+
+% bibliography
+\usepackage{styles/mybiblatex-chicago}
+\addbibresource{references.bib}
+
+% graphics
+\usepackage{graphicx}
+\DeclareGraphicsExtensions{.pdf,.png,.jpg}
+\usepackage{tikz}
+\tikzstyle{image}=[inner sep=0pt]
+
+% other packages
+\usepackage{mathtools} % for math stuff not provided by AMSmath
+\usepackage[margin=10pt,labelfont=bf,labelsep=endash]{caption}
+\usepackage{subcaption} % for subfigures
+\usepackage[neverdecrease]{paralist} % for in-paragraph lists and tightly-spaced lists
+\usepackage{array} % advanced table features like specifying column width
+\usepackage{booktabs} % for cleaner tables
+\usepackage{algorithmic} % for algorithmic environment
+\algsetup{indent=2em}
+\newcommand{\GIVEN}{\STATE \textbf{given} }
+\usepackage[ruled]{algorithm} % for algorithm float
+\usepackage{nowidow} % for preventing widow and orphan lines, does nothing by default
+\setnowidow % do not allow single lines at beginning of page
+
+% hyperlinks, load after everything else (especially biblatex)
+\usepackage{hyperref}
+\hypersetup{colorlinks,urlcolor=black,citecolor=black,filecolor=black,linkcolor=black}
+\urlstyle{rm} % remove typewriting styling from links
+
+
+%%%% Macros %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\pkg}[1]{\texttt{#1}}
+
+\makeatletter
+\def\blfootnote{\xdef\@thefnmark{}\@footnotetext}
+\makeatother
+
+\newenvironment{italicquote}{%
+  \quote
+  \itshape
+}{%
+  \endquote
+}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator{\grad}{\mathbf{grad}}
+\DeclareMathOperator{\prox}{\mathbf{prox}}
+\DeclareMathOperator{\soft}{\mathbf{soft}}
+\DeclareMathOperator{\bsoft}{\mathbf{bsoft}}
+\DeclareMathOperator{\shrink}{\mathbf{shrink}}
+\DeclarePairedDelimiter{\paren}{(}{)}
+\DeclarePairedDelimiter{\brak}{[}{]}
+\DeclarePairedDelimiter{\set}{\{}{\}}
+\DeclarePairedDelimiter{\abs}{\lvert}{\rvert}
+\DeclarePairedDelimiter{\nrm}{\lVert}{\rVert}
+\DeclarePairedDelimiter{\floor}{\lfloor}{\rfloor}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+%\DeclarePairedDelimiterXPP{\norm}[2]{}{\lVert}{\rVert}{_{#1}}{#2} % requires new mathtools
+\DeclarePairedDelimiterX{\innerprod}[2]{\langle}{\rangle}{#1,#2}
+
+% for cyrillic Sha:
+% solution 1, fake it
+%\newcommand{\Sha}{\mathrm{III}}
+% solution 2, using unicode-math commands (must use lualatex or xelatex)
+% and requires math font with character in it (Latin Modern doesn't)
+%\ExplSyntaxOn
+%\newcommand{\mathcyrillic}[2]{%
+%\chardef#1=#2
+%\um_set_mathcode:nnnn{#1}{\mathalpha}{\um_symfont_tl}{#2}}
+%\ExplSyntaxOff
+%\mathcyrillic{\Sha}{"0428}
+% solution 3, load the font and character manually
+\DeclareFontFamily{U}{wncy}{}
+\DeclareFontShape{U}{wncy}{m}{n}{<->wncyr10}{}
+\DeclareSymbolFont{cyrletters}{U}{wncy}{m}{n}
+\DeclareMathSymbol{\Sha}{\mathalpha}{cyrletters}{"58}
+
+\usepackage{styles/mathcommands-private}
+
+
+%%%% Thesis Info %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title{Theory and application of sparsity for radar sensing of ionospheric plasma}
+\author{Ryan Volz}
+\dept{Aeronautics and Astronautics}
+\principaladviser{Sigrid Close}
+\firstreader{Philip J. Erickson}
+\secondreader{Mykel Kochenderfer}
+\submitdate{December 2014}
+%\copyrightfalse
+%\thesiscopyrightfalse
+%\figurespagefalse
+%\tablespagefalse
+
+\makeatletter
+\hypersetup{pdftitle=\@title}
+\hypersetup{pdfauthor=\@author}
+\makeatother
+\hypersetup{pdfkeywords=radar; sparsity; inversion; compressed sensing; ionosphere; meteor; pulse compression; pulse coding; waveform coding}
+
+%%%% Body %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+% preface
+\beforepreface
+\include{preface/abstract}
+\include{preface/acknowledgment}
+\afterpreface
+
+% chapters
+\part{Introduction}
+\label{part_introduction}
+\graphicspath{{chapters/introduction/figures/}}
+\include{chapters/introduction/body}
+\part{Radar Analysis}
+\label{part_radar_analysis}
+\graphicspath{{chapters/radar_background/figures/}}
+\include{chapters/radar_background/body}
+\graphicspath{{chapters/radar_model/figures/}}
+\include{chapters/radar_model/body}
+\part{Waveform Inversion}
+\label{part_waveform_inversion}
+\graphicspath{{chapters/sparsity_background/figures/}}
+\include{chapters/sparsity_background/body}
+\graphicspath{{chapters/waveform_inversion/figures/}}
+\include{chapters/waveform_inversion/body}
+\graphicspath{{chapters/experimental_results/figures/}}
+\include{chapters/experimental_results/body}
+
+\part{Conclusion}
+\label{part_conclusion}
+\include{chapters/conclusion/body}
+
+% appendix
+\appendix
+\part{Appendix}
+\include{chapters/reflectivity_coefficients/body}
+
+% bibliography
+\printbibliography
+
+\end{document}

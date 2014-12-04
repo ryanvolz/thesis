@@ -1,0 +1,55 @@
+\usepackage[style=authoryear,isbn=false,url=false,dashed=false,usetranslator=true,firstinits=true,uniquename=init,uniquelist=minyear,maxbibnames=10,minbibnames=7,sortcase=false,dateabbrev=false,autolang=langname,backend=biber]{biblatex}
+
+% square brackets for citations
+\makeatletter
+\newrobustcmd*{\parentexttrack}[1]{%
+  \begingroup
+  \blx@blxinit
+  \blx@setsfcodes
+  \blx@bibopenparen#1\blx@bibcloseparen
+  \endgroup}
+\AtEveryCite{%
+  \let\parentext=\parentexttrack%
+  \let\bibopenparen=\bibopenbracket%
+  \let\bibcloseparen=\bibclosebracket}
+\makeatother
+% italicize name in citation
+\DeclareNameFormat{labelname}{%
+  \ifcase\value{uniquename}%
+    \mkbibemph{\usebibmacro{name:last}{#1}{#3}{#5}{#7}}%
+  \or
+    \ifuseprefix
+      {\mkbibemph{\usebibmacro{name:first-last}{#1}{#4}{#5}{#8}}}
+      {\mkbibemph{\usebibmacro{name:first-last}{#1}{#4}{#6}{#8}}}%
+  \or
+    \mkbibemph{\usebibmacro{name:first-last}{#1}{#3}{#5}{#7}}%
+  \fi
+  \mkbibemph{\usebibmacro{name:andothers}}}
+% comma between name and year in citation
+\renewcommand*{\nameyeardelim}{\addcomma\addspace}
+
+% commas between units in bibliography
+\renewcommand*{\newunitpunct}{\addcomma\space}
+% remove "in:" before journal title in bibliography
+\renewbibmacro*{in:}{}
+% make "DOI:" lowercase in bibliography
+\DeclareFieldFormat{doi}{%
+  \textrm{doi}\addcolon
+  \ifhyperref
+    {\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+    {\nolinkurl{#1}}}
+
+% re-map some .bib file fields
+\DeclareSourcemap{
+  \maps[datatype=bibtex, overwrite]{
+    \map{
+      % remove language entry
+      \step[fieldset=language, null]
+      % remove urldate entry
+      \step[fieldset=urldate, null]
+      % fix author completely in braces (to prevent parsing code from running on a non-name)
+      \step[fieldsource=author, match=\regexp{\A{.+}\z}, final]
+      \step[fieldsource=author, match=\regexp{(?:(?!\A){|}(?!\z))}, replace=\regexp{}]
+    }
+  }
+}

@@ -1,0 +1,90 @@
+\usepackage[authordate-trad,firstinits=true,uniquename=init,isbn=false,url=false,numbermonth=false,noibid=true,autolang=langname,backend=biber]{biblatex-chicago}
+
+% square brackets for citations
+\makeatletter
+\newrobustcmd*{\parentexttrack}[1]{%
+  \begingroup
+  \blx@blxinit
+  \blx@setsfcodes
+  \blx@bibopenparen#1\blx@bibcloseparen
+  \endgroup}
+\AtEveryCite{%
+  \let\parentext=\parentexttrack%
+  \let\bibopenparen=\bibopenbracket%
+  \let\bibcloseparen=\bibclosebracket}
+\makeatother
+% italicize name in citation
+\DeclareNameFormat{labelname}{%
+  \ifcase\value{uniquename}%
+    \mkbibemph{\usebibmacro{name:last}{#1}{#3}{#5}{#7}}%
+  \or
+    \ifuseprefix
+      {\mkbibemph{\usebibmacro{name:first-last}{#1}{#4}{#5}{#8}}}
+      {\mkbibemph{\usebibmacro{name:first-last}{#1}{#4}{#6}{#8}}}%
+  \or
+    \mkbibemph{\usebibmacro{name:first-last}{#1}{#3}{#5}{#7}}%
+  \fi
+  \mkbibemph{\usebibmacro{name:andothers}}}
+% comma between name and year in citation
+\renewcommand*{\nameyeardelim}{\addcomma\addspace}
+
+% commas between units in bibliography
+\renewcommand*{\newunitpunct}{\addcomma\space}
+% italicize journal volume in bibliography
+\DeclareFieldFormat[article,periodical]{volume}{\mkbibemph{#1}}% volume of a journal
+% comma between journal title and issue number in bibliography
+\renewbibmacro*{cjournal+ser+vol+num}{% Moved to bbx
+  \usebibmacro{journal+sub}%
+  \setunit*{\addcomma\space}%
+  \printlist[periodplace]{location}%
+  \setunit*{\addspace}%
+  \iffieldundef{series}
+    {}
+    {\newcunit
+      \printfield[jourser]{series}%
+      \newcunit}%\setunit*{\addspace}?
+  \ifthenelse{\iffieldundef{year}\AND\iffieldundef{month}}%
+  {\iffieldundef{volume}%
+    {\newcunit%
+      \printfield[journum]{number}%
+      \clearfield{number}%
+      \setunit{\addcomma\addspace}}
+    {\printfield[jourvol]{volume}%
+      \setunit{\addcomma\addspace}}}%
+  {\printfield[jourvol]{volume}%
+    \newcunit%
+    \printfield[journum]{number}%
+    \clearfield{number}%
+    \setunit{\addcomma\addspace}}% need * here?
+  \printfield{eid}%
+  \newunit}
+% year in parentheses in bibliography
+\renewbibmacro*{cmsbibyear}{%
+  \printtext[parens]{%
+  \iftoggle{cms@origlabel}%
+  {\usebibmacro{origyear+labelyear}}%
+  {\iftoggle{cms@bothlabelnew}%
+    {\usebibmacro{bothyear+oldstyle}}%
+    {\iftoggle{cms@bothlabelold}%
+      {\usebibmacro{bothyear+oldstyle}}%
+      {\usebibmacro{labelyear+extrayear}}}}}%
+  \ifcsdef{@cms@tempdate}%
+  {\toggletrue{\@cms@tempdate}}%
+  {}%
+  \clearfield{year}% kludge, above would clear year if not for added \printtext[parens]
+  }
+
+% re-map some .bib file fields
+\DeclareSourcemap{
+  \maps[datatype=bibtex, overwrite]{
+    \map{
+      % remove language entry
+      \step[fieldset=language, null]
+      % remove urldate entry
+      \step[fieldset=urldate, null]
+      % fix author completely in braces (to prevent parsing code from running on a non-name)
+      \step[fieldsource=author, match=\regexp{\A{.+}\z}, final]
+      \step[fieldsource=author, match=\regexp{(?:(?!\A){|}(?!\z))}, replace=\regexp{}]
+    }
+  }
+}

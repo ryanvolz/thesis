@@ -1,0 +1,72 @@
+\chapter[Reflectivity Coefficient Simplification]{Simplification of the Reflectivity Coefficient Equation}
+\label{reflectivity_coefficients}
+The radar target scene is represented in the discrete radar model by reflectivity coefficients $h[n,p]$, defined in equation \eqref{eq:reflectivity_coefficients_not_simplified} as a result of the radar model derivation as
+\begin{equation}\label{eq:reflectivity_coefficients_start}
+ h[n,p] = e^{2 \pi i n(p+1)/N} \int\limits_{p\tau_b}^{(p+1)\tau_b} \sum_{k = -\infty}^{\infty} h_{n + kN}(\rho + \rho_0) e^{-2\pi i (n + kN) \nu_0 \rho} \dee\rho.
+\end{equation}
+This equation, with its infinite-sum Fourier series expansion of the reflectivity function, is not very illuminating when it comes to finding an intuitive interpretation of the reflectivity coefficients. Fortunately, such an interpretation, given in Section \ref{radar_model_representation}, is possible after some simplification. This chapter documents the steps for finding a simpler representation of the reflectivity coefficients.
+
+We start by recalling the definition of the Fourier series coefficients and writing them in terms of a windowed Fourier transform:
+\begin{align}
+ h_k(\rho) &= \nu_0 \int_{0}^{1/\nu_0} \tilde{h}(t, \rho) e^{-2\pi i k\nu_0 t} \dee{t}\\
+ &= \nu_0 \; \mathcal{F}_t \!\brak*{ \tilde{h}(t, \rho) \Pi_{1/\nu_0}\paren*{t - \frac{1}{2\nu_0}} }\!(k\nu_0) \label{eq:windowed_fourier_transform_rect}\\
+ &= h_w(k\nu_0, \rho) \label{eq:windowed_fourier_transform},
+\end{align}
+where $\mathcal{F}_t$ represents the Fourier transform with respect to $t$ and $\Pi_{T}(t)$ is the rect function defined as
+\begin{equation}
+ \Pi_{T}(t) = \begin{dcases}
+                  1 & \abs{t} < T/2\\
+                  0 & \abs{t} \ge T/2.
+                 \end{dcases}
+\end{equation}
+As is clear from this definition, we can think of the Fourier series coefficients as samples from the scaled and windowed Fourier transform of $\tilde{h}$. Substituting \eqref{eq:windowed_fourier_transform} into \eqref{eq:reflectivity_coefficients_start} and using convolution and Dirac comb shorthand notation yields:
+\begin{align}
+ h[n,p] &= e^{2 \pi i n(p+1)/N} \int\limits_{p\tau_b}^{(p+1)\tau_b} \sum_{k = -\infty}^{\infty} h_w((n + kN)\nu_0, \rho + \rho_0) e^{-2\pi i (n + kN)\nu_0\rho} \dee\rho\nonumber\\
+ &= e^{2 \pi i n(p+1)/N} \int\limits_{p\tau_b}^{(p+1)\tau_b} \sum_{k = -\infty}^{\infty} \int\limits_{-\infty}^{\infty} h_w(f, \rho + \rho_0) e^{-2\pi i f\rho} \delta((n + kN)\nu_0 - f) df \dee\rho\nonumber\\
+ &= e^{2 \pi i n(p+1)/N} \int\limits_{p\tau_b}^{(p+1)\tau_b} \sum_{k = -\infty}^{\infty} \brak*{\paren*{h_w(f, \rho + \rho_0) e^{-2\pi i f\rho}} * \delta_{-kN\nu_0}(f)}\!(n\nu_0) \dee\rho\nonumber\\
+ &= e^{2 \pi i n(p+1)/N} \int\limits_{p\tau_b}^{(p+1)\tau_b} \brak*{\paren*{h_w(f, \rho + \rho_0) e^{-2\pi i f\rho}} * \Sha_{N\nu_0}(f)}\!(n\nu_0) \dee\rho \label{eq:reflectivity_coefficients_shorthand}
+\end{align}
+where $*$ is the convolution operator and $\Sha_\alpha(f) \equiv \sum_{k = -\infty}^{\infty} \delta(f - k\alpha)$ is the Dirac comb with spacing $\alpha$. Using the rect function notation from \eqref{eq:windowed_fourier_transform_rect}, the function in brackets in equation \eqref{eq:reflectivity_coefficients_shorthand} can be further simplified by taking the inverse Fourier transform, combining terms, and taking the Fourier transform to arrive at an equivalent representation:
+\begingroup
+\allowdisplaybreaks
+\begin{align}
+ &\brak*{\paren*{h_w(f, \rho + \rho_0) e^{-2\pi i f\rho}} * \Sha_{N\nu_0}(f)}\!(s)\nonumber\\
+ &\quad= \mathcal{F}_{u}\mathcal{F}_{s}^{-1} \brak*{\paren*{h_w(f, \rho + \rho_0) e^{-2\pi i f\rho}} * \Sha_{N\nu_0}(f)}\!(s)\nonumber\\
+ &\quad= \mathcal{F}_{u}\brak*{\mathcal{F}_{f}^{-1} \paren*{h_w(f, \rho + \rho_0) e^{-2\pi i f\rho}} \cdot \paren*{\frac{1}{N\nu_0}\Sha_{1/(N\nu_0)}(u)}}\nonumber\\
+ &\quad= \mathcal{F}_{u}\brak*{\mathcal{F}_{f}^{-1}\paren*{h_w(f, \rho + \rho_0)}\!(u - \rho) \cdot \paren*{\frac{1}{N\nu_0} \Sha_{\tau_b}(u)}}\nonumber\\
+ &\quad= \mathcal{F}_{u}\brak*{\tilde{h}(u - \rho, \rho + \rho_0) \Pi_{1/\nu_0}\bigl(u - \rho - 1/(2\nu_0)\bigr) \nu_0 \frac{1}{N\nu_0}\Sha_{\tau_b}(u)}\nonumber\\
+ &\quad= \mathcal{F}_{u}\brak*{\tilde{h}(u - \rho, \rho + \rho_0) \frac{1}{N} \Pi_{N\tau_b}\paren*{u - \rho - N\tau_b/2} \Sha_{\tau_b}(u)}\nonumber\\
+ &\quad= \mathcal{F}_{u}\brak*{\paren*{\tilde{h}(u - \rho, \rho + \rho_0)} \cdot \paren*{\frac{1}{N} \sum_{k=\ceil{\rho/\tau_b}}^{\ceil{\rho/\tau_b} + N - 1} \delta\paren*{u - k\tau_b}} }\nonumber\\
+ &\quad= \brak*{ \Bigl( h(f, \rho + \rho_0) e^{-2\pi i f\rho} \Bigr) * \paren*{ \frac{1}{N} \sum_{k=\ceil{\rho/\tau_b}}^{\ceil{\rho/\tau_b} + N - 1} e^{-2\pi i fk\tau_b} } }\!(s),
+\end{align}
+\endgroup
+with $\ceil{\rho/\tau_b} = \mathrm{ceil}(\rho/\tau_b)$ and $h(f, \rho) = \mathcal{F}_{t} \tilde{h}(t, \rho)$. Substituting this result back into equation \eqref{eq:reflectivity_coefficients_shorthand} yields the simplification
+\begin{align*}
+ h[n,p] &= e^{2 \pi i n(p+1)/N} \int\limits_{p\tau_b}^{(p+1)\tau_b} \brak*{ h(f, \rho + \rho_0) e^{-2\pi i f\rho} * \frac{1}{N} \sum_{k=\ceil{\rho/\tau_b}}^{\ceil{\rho/\tau_b} + N - 1} e^{-2\pi i fk\tau_b} }\!(n\nu_0) \dee\rho\nonumber\\
+ &= e^{2 \pi i n(p+1)\nu_0\tau_b} \int\limits_{p\tau_b}^{(p+1)\tau_b} \brak*{ h(f, \rho + \rho_0) e^{-2\pi i f\rho} * \frac{1}{N} \sum_{k=p+1}^{p + N} e^{-2\pi i fk\tau_b} }\!(n\nu_0) \dee\rho,
+\end{align*}
+where we use the fact that $\ceil{\rho/\tau_b} = p+1$ on the integration interval $[p\tau_b, (p+1)\tau_b]$. The next step is to combine exponential terms,
+\begin{equation*}
+ h[n,p] = \int\limits_{p\tau_b}^{(p+1)\tau_b} \brak*{ h(f, \rho + \rho_0) e^{-2\pi i f\rho} * \frac{1}{N} e^{-2 \pi i (f - n\nu_0)(p+1)\tau_b} \sum_{k=0}^{N-1} e^{-2\pi i fk\tau_b} }\!(n\nu_0) \dee\rho,
+\end{equation*}
+and then recognize that since the combined exponential term is evaluated at $(f - n\nu_0)$, it can be moved to the other side of the convolution operator and combined with the exponential on that side:
+\begin{equation}\label{eq:reflectivity_coefficients_pre_psinc}
+ h[n,p] = \int\limits_{p\tau_b}^{(p+1)\tau_b} \brak*{ h(f, \rho + \rho_0) e^{-2\pi i f (\rho - (p+1)\tau_b)} * \frac{1}{N} \sum_{k=0}^{N-1} e^{-2\pi i fk\tau_b} }\!(n\nu_0) \dee\rho.
+\end{equation}
+
+This equation is much simpler than the original, but there is one more simplification that can be performed. The final step makes use of the periodic sinc, sometimes known as the wrapped sinc or Dirichlet function, defined as:
+\begin{equation}
+ \mathrm{psinc}_N(\omega) = \frac{1}{N} \frac{\sin(\omega N / 2)}{\sin(\omega / 2)}.
+\end{equation}
+From the finite geometric sum formula and the complex exponential representation of sine, the sum in \eqref{eq:reflectivity_coefficients_pre_psinc} can be written as a frequency-blurring kernel $b_{N,\tau_b}(f)$:
+\begin{align}
+ b_{N,\tau_b}(f) &\equiv \frac{1}{N} \sum_{k=0}^{N-1} e^{-2\pi i fk\tau_b}\nonumber\\
+ &= \frac{1}{N} \frac{1 - e^{-2 \pi i N \tau_b f}}{1 - e^{-2 \pi i \tau_b f}}\nonumber\\
+ &= \frac{1}{N} e^{-\pi i \tau_b f (N-1)} \frac{\sin(\pi N \tau_b f)}{\sin(\pi \tau_b f)}\\
+ &= e^{-\pi i \tau_b f (N-1)} \mathrm{psinc}_N(2\pi \tau_b f).
+\end{align}
+This allows us to finally write the discrete reflectivity coefficients $h[n,p]$ as:
+\begin{align}\label{eq:reflectivity_coefficients_simplified}
+ h[n,p] = \int\limits_{p\tau_b}^{(p+1)\tau_b} \brak*{ h(f, \rho + \rho_0) e^{-2\pi i f (\rho - (p+1)\tau_b)} * b_{N,\tau_b}(f) }\!(n\nu_0) \dee\rho.
+\end{align}
+Further discussion of this representation can be found in Section \ref{radar_model_representation} of Chapter \ref{radar_model}.

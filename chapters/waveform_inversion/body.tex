@@ -1,0 +1,203 @@
+\chapter{Waveform Inversion Method}
+\label{waveform_inversion}
+In the quest to eliminate matched filter sidelobes from decoded radar data, we have developed a model that represents the radar scene as discrete reflectivity coefficients $h[n,p]$ in a delay-frequency space:
+\begin{equation}
+ y[m] = \sum_{p=0}^{P-1} \sum_{n=0}^{N-1} s[Rm-p+L-1] e^{2 \pi i n(Rm-p+L-1)/N} h[n,p],
+\end{equation}
+written compactly as
+\begin{align}
+ y = \sqrt{N} A h \quad \Leftrightarrow \quad y = A x.
+\end{align}
+Solving for the reflectivity coefficients from the measured signal $y$ provides a sidelobe-free and potentially higher-resolution ($R > 1$) radar scene. The primary barrier is that the model represents an underdetermined system of equations with infinite solutions.
+
+We have already encountered the least-norm solution: the matched filter result. Recall that for the radar model, the composed operator $AA^*$ is the identity scaled by the $l_2$ norm of $s$, which we can choose to be 1 without loss of generality. Thus, the least-norm solution is given by equation \eqref{eq:least_norm_solution} as
+\begin{equation}
+ x_{l_2} = A^*y,
+\end{equation}
+which is just the (scaled) matched filter bank applied to the measured signal. Just as the least-norm solution to a general underdetermined system may not always be the most appropriate, in this case we already know that the simple linear method provides an inadequate solution.
+
+Fortunately, one of the reasons we sought a delay-frequency representation of the radar scene is that we expect such a representation to be sparse. With the delay-frequency radar model, measurement incoherence is completely determined by the choice of transmission waveform $s$, although it remains to be seen which values for $s$ will result in minimal coherence. Provided that the measurements described by the radar model are sufficiently incoherent, the theory of compressed sensing says that we can recover the true sparse signal using convex optimization algorithms like the proximal gradient method. In this chapter, we bring these ideas to bear on the radar problem and detail how to implement them to perform waveform inversion.
+
+\section{Related Work}
+\label{related_work}
+\subsection{Other Radar Applications}
+Sparse approximation and the radar problem are a natural match, and researchers have proposed applying compressed sensing to radar almost since the theory was first developed \autocite{BS07}. Some applications are concerned only with acquiring the returned radar signal at lower cost or with a higher sampling rate. In this case, the signal is undersampled with respect to the Nyquist rate and compressed sensing is performed in the truest sense of the term. Theory specific to this problem, with the sparse signal represented in an overcomplete and thus coherent dictionary, is examined by \textcite{CENR11}. On the practical side, \textcite{YTN+12} demonstrate wideband compressed sensing of radar pulse parameters, with the recovery done completely in hardware. The potential for compressed sensing to reduce radar hardware complexity and cost is also noted by \textcite{BS07} and \textcite{End10}. This research is interesting because of its potential to completely replace existing receivers with ones that are both cheaper and higher-bandwidth, but it is almost completely orthogonal to the problem of coded waveform ambiguity.
+
+The role of sparsity in radar signal processing and the relationship between compressed sensing techniques and established processing methods is discussed by \textcite{PEPC10}, but their focus is on imaging with synthetic aperture radar. \textcite{HM13} simulate a related technique, compressed sensing interferometric imaging, and apply it to observe equatorial spread-F using the Jicamarca ISR. Their results compare favorably to the existing Capon's method and maximum entropy techniques. Radar imaging applications also exhibit waveform ambiguity and would benefit in theory from the elimination of sidelobes, but these and other methods safely ignore the sidelobe problem by either working with stationary targets and using a chirp waveform (\autocite{PEPC10}) or using short uncoded pulses (\autocite{HM13}). Because of this, the existing imaging techniques are more akin to compressed sensing tomography than to waveform inversion.
+
+\subsection{Theoretical Support}
+Two works focusing on the time-frequency representation problem do have direct relevance to waveform inversion. \textcite{BSN08} propose using a representation similar to our radar model for learning the parameters of communication channels, while \textcite{HS09} explore the use of compressed sensing for increased resolution of radar target detection using nearly the same model. Both are complementary to our work because they focus on waveform selection and theoretical conditions for sparse recovery rather than the practical details of applying the technique to real data. Consequently, it is useful to know that their measurement matrices have the restricted isometry property when the transmitted waveform is given by a random binary code \autocite{BSN08} or the Alltop sequence \autocite{HS09}, the latter of which is a type of discrete quadratic chirp.
+
+A number of authors address the compressed sensing problem for general convolutional sensing matrices, again either with random codes \autocite{TWD+06, BHR+07, Rom09, PR10} or with the Alltop sequence \autocite{PR10}. The specifics vary, but all prove measurement incoherence and show that sparse recovery is guaranteed with a number of measurements on the order of the solution sparsity. These results establish specific forms of the general incoherent sampling theorem from Chapter \ref{sparsity_background}. The differences between these models and ours are minor but notable, so the recovery guarantees are not directly applicable. All of the existing literature is based on a dense measurement matrix, which can only be produced by an exceptionally long pulse relative to the delay window size. As a result, the typical measurement incoherence of our model is reduced, and we can expect to require either more measurements or higher sparsity for success. Nevertheless, we are justified theoretically in seeking sparse recovery with measurements of this form.
+
+\section{Solution Procedure}
+\label{waveform_inversion_solution}
+With incoherent measurements of the form $y=Ax$ and an assumed sparse $x$, we are primed to solve an $l_1$-minimization problem to recover $x$. In reality, radar data has noise, so the measurements are more accurately approximated by
+\begin{equation}
+ y = Ax + \eta,
+\end{equation}
+where $\eta$ represents a vector of i.i.d.\ zero-mean complex Gaussian noise. To ensure that $A$ is properly scaled with $\norm{2}{A} = 1$ and that any noise has the same average power after applying the adjoint (matched filter) $A^*$, we normalize the code $s$ so that $\norm{2}{s} = 1$. Of the sparse recovery problems that include measurement noise, we will focus on $l_1$-regularized least squares because of its simplicity and generally quick convergence. In the notation of our model, this problem solves the following:
+\begin{equation*}\tag{$\text{P}_{\text{1}\lambda}$}
+ \underset{x}{\mathrm{minimize}} \quad \frac{1}{2}\norm{2}{Ax - y}^2 + \lambda\norm{1}{x}.
+\end{equation*}
+Choosing the regularization parameter $\lambda$ is crucial since it balances the importance of finding a sparse solution with the importance of minimizing deviation from the measurements.
+
+\subsection{Regularization Parameter}
+The solution is expected to deviate from the measurements due to noise, and it is through quantifying the noise that we can choose an appropriate $\lambda$. It is common practice to estimate the noise variance $\hat{\sigma}^2$ by averaging the power of presumed noise-only samples $y_\eta$:
+\begin{equation}
+ \hat{\sigma}^2 = \frac{1}{K} \sum_{k=0}^{K-1} \abs*{y_{\eta}[k]}^2,
+\end{equation}
+where $K$ is the number of noise samples. The noise measurement is usually acquired separately from the data measurement (or perhaps each is a different segment of a continuous stream of samples), and it typically corresponds to large delays/ranges for which no target backscatter is assumed. It can also be helpful to stabilize the noise estimate by averaging it across multiple pulses, provided one can assume that the noise power is fixed over some period of time. Certainly it makes sense to use a single noise estimate when analyzing a slice of data that encompasses multiple pulses, if only so that slight changes in the estimate do not cause apparent changes in signal-to-noise ratio (SNR) that might be interpreted instead as signal variance. No matter how the noise power estimate $\hat{\sigma}^2$ is made, accuracy is important since the estimate is used to determine the regularization parameter.
+
+To set the regularization parameter $\lambda$, we use a property of the solution $x_*$ to \eqref{eq:l1rls}:
+\begin{equation}\label{eq:optimality_condition}
+ \norm{\infty}{A^*\paren*{Ax_* - y}} \le \lambda,
+\end{equation}
+In words, every entry of the result of applying $A^*$ to the residual must have a magnitude less than $\lambda$. This fact is evident from the objective's first-order optimality condition from subdifferential calculus:
+\begin{equation}
+ 0 \in \partial \paren*{\frac{1}{2}\norm{2}{Ax - y}^2 + \lambda\norm{1}{x}}\bigg|_{x = x_*},
+\end{equation}
+which evaluates to
+\begin{equation}
+ \paren*{A^*\paren*{Ax_* - y}}_i \in \begin{cases}
+                                      \set{\lambda {x_*}_i/\abs*{{x_*}_i}}, & \abs*{{x_*}_i} > 0\\
+                                      \set{\lambda : \abs{\lambda} \le 1}, & {x_*}_i = 0
+                                     \end{cases}
+\end{equation}
+for every individual entry ${x_*}_i$ of $x_*$. One possible choice for $\lambda$ is just below the critical value $\lambda_\text{crit} = \norm{\infty}{A^*y}$ at which $x = 0$ ceases to be the optimal solution. The choice of $\lambda = 0.99\lambda_\text{crit}$ or $\lambda = 0.95\lambda_\text{crit}$ provides a maximally sparse nonzero solution, but it can allow the residual $y - Ax_*$ to have a higher variance than would be expected with a given noise level.
+
+Since we have an estimate for the noise power, we can do better. As was shown with the derivation of the radar model, $A^*$ scaled by $\sqrt{N}$ is equivalent to matched filtering. Therefore, we can think of $\sqrt{N} A^*\paren*{Ax_* - y}$ as the matched filter applied to the residual. In order for $x_*$ to be an acceptable solution, we restrict the filtered residual so that its entries have a magnitude less than the noise level. Otherwise, we would consider that element to represent scattered signal from a target, which should be represented in the solution $x_*$ instead of in the residual. Since $\sqrt{N} \lambda$ is an upper bound on the filtered residual from equation \eqref{eq:optimality_condition}, $\lambda$ specifies the detection threshold. For a given false alarm rate for detection, we can set the detection threshold at a fixed multiple $C_\text{FAR}$ of the noise power. In other words, we want to set a solution constraint of
+\begin{equation}
+ \norm{\infty}{\sqrt{N} A^*\paren*{Ax_* - y}}^2 \le N\lambda^2 = C_\text{FAR} \hat{\sigma}^2,
+\end{equation}
+which implies that we want
+\begin{equation}
+ \lambda = \sqrt{C_\text{FAR}} \frac{\hat{\sigma}}{\sqrt{N}}.
+\end{equation}
+If the noise is truly zero-mean complex Gaussian, then $C_\text{FAR} = 4$ corresponds to a false alarm rate of about $2\%$. Targets with an SNR less than $4$ (after the sidelobes from higher-signal targets are removed) won't be included in the solution, and about $2\%$ of the noise will be included in the solution. This is a reasonable trade-off between detection and model complexity, so our default value for $\lambda$ is $2\hat{\sigma}/\sqrt{N}$.
+
+\subsection{Iterative Thresholding Matched Filter}
+One method for recovering the sparse solution for the reflectivity coefficients is to use the iterative soft thresholding algorithm derived from the proximal gradient method.
+\begin{algorithm}
+ \caption*{\textbf{Algorithm \ref{alg:ist}} Iterative Soft Thresholding}
+ \begin{algorithmic}
+  \GIVEN a starting point $x^0$, a step size $0 < \mu \le 2/\norm{2}{A}^2$
+  \REPEAT
+  \STATE $z^{k+1} \coloneqq x^k - \mu \, A^*(Ax^k - y)$
+  \STATE $x^{k+1} \coloneqq \soft_{\mu \lambda}(z^{k+1})$
+  \UNTIL{stopping criterion is satisfied}
+ \end{algorithmic}
+\end{algorithm}%
+Examining the steps of this algorithm leads to an intuitive interpretation, in radar terminology, of the nonlinear procedure for arriving at a sparse solution. We describe this interpretation as an \emph{iterative thresholding matched filter}.
+
+Consider the algorithm's first step for an initial guess of $x^0 = 0$ and step size $\mu = 1$:
+\begin{equation}
+ z^1 \coloneqq A^*y.
+\end{equation}
+In radar terms, this first step is to apply the matched filter to the received signal. The next step produces a first "guess" of the solution by thresholding the matched filter result:
+\begin{equation}
+ x^1 \coloneqq \soft_{\lambda}(z^1) = \soft_{\lambda}(A^*y).
+\end{equation}
+Values in the matched filter result that are below the detection threshold set by $\lambda$ are set to zero, and the remaining values are shrunk toward zero. In other words, the first guess is simply everything that the matched filter would classify as a detected signal, which can include sidelobes.
+
+Looping to the next iteration, the third step is:
+\begin{equation}
+ z^2 \coloneqq x^1 + A^*(y - Ax^1).
+\end{equation}
+The interpretation is that the expected received signal based on the first guess is calculated and compared to the actual measurement. The difference is matched filtered to see what newly-revealed components of the signal were left out the first time, and that result is added to the original guess. As before, the fourth step thresholds the matched filter result to get an improved guess:
+\begin{equation}
+ x^2 \coloneqq \soft_{\lambda}(z^2) = \soft_{\lambda}\paren*{A^*\paren*{x^1 + A^*(y - Ax^1)}}.
+\end{equation}
+Further iterations proceed in the same manner, applying matched filtering and thresholding to steadily improve the solution estimate until convergence.
+
+\subsection{Scaling and Noise}
+It is convenient to work in terms of $x$ so that the model operations $A$ and $A^*$ are well-scaled, but $h = x / \sqrt{N}$ is what we actually want given that the matched filter bank has the scaling $\sqrt{N}A^*y$. The reflectivity coefficients $h$ are indeed the matched filter result with modeled sidelobes and the filtered residual removed:
+\begin{align}
+ \sqrt{N} A^*y &= \sqrt{N} A^*\paren*{y - Ax + Ax}\nonumber\\
+ &= N A^*Ah + \sqrt{N} A^*\paren*{y - Ax}\nonumber\\
+ \underbrace{\sqrt{N} A^*y}_\text{matched filter} &= h + \underbrace{\paren*{NA^*A - I}h}_\text{sidelobes} + \underbrace{\sqrt{N} A^*\paren*{y - Ax}}_\text{matched filtered residual}\label{eq:sidelobe_removal}.
+\end{align}
+Recall that the operation $N \cdot A^*A$ adds matched filter ambiguity to its input (equation \ref{eq:ambiguity_AstarA}), hence subtracting the identity $I$ and applying it to $h$ leaves only the sidelobes generated from $h$. The residual mostly represents measurement noise, but a significant part of it is the bias that is left after $l_1$-minimization overly-shrinks the solution toward zero.
+
+Solution bias can be a problem if it is not handled properly. One method to acquire an unbiased estimate is to find the least-squares solution with the sparsity pattern that matches $x_*$. This can be solved efficiently using any of the prox methods detailed in Chapter \ref{sparsity_background}. With reasonable false-alarm rates, however, the sparsity pattern of $x_*$ will include noise coefficients, and this de-biasing step can cause those coefficients to take on unreasonable values in an effort to match all of the noise. Fortunately for this application, the de-biasing step is generally unnecessary since in most cases we can work with a modified solution that includes the residual term. If all we want to do is remove sidelobes from the matched filter solution, then we can subtract only that term from equation \eqref{eq:sidelobe_removal} and define
+\begin{align}
+ \hat{h}_* &= h_* + \sqrt{N} A^*\paren*{y - Ax_*},\\
+\intertext{or equivalently}
+ \hat{h}_* &= \frac{x_*}{\sqrt{N}} + \sqrt{N} A^*\paren*{y - Ax_*}.
+\end{align}
+This modified reflectivity estimate $\hat{h}_*$ nicely encapsulates the entire solution. The first term is the sparse reflectivity, embodying the signal that is well-represented by the radar model. The second term is matched filtering applied to the residual, embodying everything that is not captured by the radar model. If the sparse solution leaves out significant components that fall below the noise threshold, those signals will be visible in the residual term. Instead of calling everything in the residual "noise" and discarding it, we incorporate it into the solution and let it be judged on its own merits.
+
+\subsection{Solution Residual}
+Care must be taken when working with the residual for purposes other than comparison to the full delay-frequency matched filter result. Since waveform inversion eliminates sidelobes, there is a new viable option for representing the solution as a range-time-intensity (RTI) plot: totaling the reflected power across all frequencies and displaying it as a function of range and time. In other words, we sum the square magnitude of the reflectivity over the frequency index and plot that instead of a single-frequency slice. Doing this with the estimate $\hat{h}_*$ produces incorrect results since the noise is not independent across frequency. The residual values $\zeta = y - Ax_*$ are independent, but the matched filtered residual across delay-frequency space is clearly not. Summing across the frequency index of $A^*\zeta$ is acceptable, and it produces the zero-frequency matched filter result of correlating $\zeta$ with the transmitted waveform $s^*$. The problem arises from the added scaling factor of $\sqrt{N}$ in the residual term of $\hat{h}_*$, which magnifies the noise by that factor after frequency summing. Therefore, when calculating a frequency-integrated RTI plot, we drop the scaling factor on the residual term and proceed as normal.
+
+It must be noted that adding the residual to the sparse solution in the manner of $\hat{h}_*$ does not produce a solution that matches the measurements exactly. A nearly-sparse exact solution $x_0$ of $y=Ax$ is given by adding the unscaled residual to $x_*$:
+\begin{equation}
+ x_0 = x_* + A^*\paren*{y - Ax_*}.
+\end{equation}
+This solution is nearly-sparse because it has few nonzero values with magnitude greater than $\lambda$, but many nonzero values with magnitude less than $\lambda$. Applying the forward model produces
+\begin{align}
+ Ax_0 &= Ax_* + AA^*\paren*{y - Ax_*}\nonumber\\
+ &= Ax_* + y - Ax_*\nonumber\\
+ &= y
+\end{align}
+since $AA^*$ is the identity. Though the scaled solution $h_0 = x_0/\sqrt{N}$ is an unbiased estimate of the true reflectivity coefficients, it is not particularly useful. One negative is that it is not exactly sparse, but the difference is small enough to be of almost no importance. The main problem with $h_0$ is that it spreads the residual out over delay-frequency space in a manner that masks its true representation in the measurement space. The noise coefficients $x_\eta = A^*\paren*{y - Ax_*}$ that get added to $x_*$ are simply the least-norm estimate for $y - Ax_* = Ax_\eta$, which has no physical meaning. In order to understand where the model fails in approximating the true solution, it is preferable to work with the estimate $\hat{h}_*$ since it can be compared directly to the matched filter result.
+
+\section{Implementation}
+\label{waveform_inversion_implementation}
+Performing waveform inversion in practice requires the ability to calculate the radar model and solve a sparse approximation problem using it. Obviously there was no existing computer code that implemented our specific radar model, so that had to be written from scratch. As for sparse approximation, many packages are freely available that solve the various forms of that problem. However, many of them do not accommodate specifying $A$ and $A^*$ as functional operators rather than explicit matrices, so that leaves far fewer software packages to choose from. The \pkg{TFOCS} package described by \textcite{BCG11} and available at \url{http://cvxr.com/tfocs/}\nocite{tfocs} is the only one that implements the algorithms in Chapter \ref{sparsity_background} and includes the performance enhancements that speed convergence. The initial exploration of sparse approximation using the radar model was done using \pkg{TFOCS}, and it was well-suited to that purpose.
+
+Unfortunately, two obstacles were encountered. The first is that it was difficult to tune the algorithm parameters to achieve reliably good performance. The second is that \pkg{TFOCS} is written using MATLAB, which became a problem when we decided to implement the radar model in Python for ease of reuse. In the end, it was necessary to also code all of the convex optimization algorithms from scratch. To prevent this from happening to other researchers in the future, the radar model and proximal operator software packages have been made available as BSD-licensed open source Python code \autocite{python2_7, Oli07}, which can be found on GitHub at \url{http://github.com/ryanvolz}. The radar model package was given the creative name of \pkg{radarmodel}, while the proximal optimization routines are packaged together as \pkg{prx}. For the purposes of reproducibility, all of the code for producing the results in this thesis is also available at the same GitHub site. Special recognition must go to the developers of \pkg{matplotlib} \autocite{matplotlib} and \pkg{IPython} \autocite{ipython}; their plotting and interactive programming tools have made this work possible.
+
+\subsection{\pkg{radarmodel}}
+The \pkg{radarmodel} package implements the forward operator $A$ and adjoint operator $A^*$, which are necessary to compute solutions using the radar model of Chapter \ref{radar_model}.  Users first specify the transmission code $s$, the undersampling ratio $R$, the length of the measurement vector $M$, and the number of frequency steps $N$ for a particular problem formulation. Then, the program creates tailored functions for the forward and adjoint operators which can be used to quickly compute those operations repeatedly. As with most scientific computing in Python, \pkg{radarmodel} makes extensive use of the \pkg{numpy} package \autocite{numpy} for fast array computations.
+
+Since the primary goal in writing special-purpose functions to compute the radar model is to make them as fast and efficient as possible, great care was taken in implementing and benchmarking the operators. Multiple formulations that deconstruct the operations into different convolution, Fourier transform, and array arithmetic steps were tested, and \pkg{radarmodel} can select the best formulation for a particular set of problem parameters on the fly. The different formulations all make use of the FFT operator through the \pkg{pyffw} package \autocite{pyfftw}, and some of them use the compiled-language add-ons provided by \pkg{cython} or \pkg{numba}. The \pkg{cython} package \autocite{cython} allows one to take a restricted form of the Python language, add static declarations, and compile it into C code. The \pkg{numba} package \autocite{numba} allows one to decorate customized \pkg{numpy} routines and compile them just-in-time (JIT) by dynamically invoking the \pkg{llvm} compiler. Both packages provide optimized performance for intensive calculations without having to leave Python, greatly easing development and debugging. The result is a radar model implementation that is one or two orders of magnitude faster and less memory-intensive than a naive or matrix implementation.
+
+\subsection{\pkg{prx}}
+The \pkg{prx} package implements the proximal gradient, accelerated proximal gradient, ADMM, linearized ADMM, and PDHG methods for solving a number of $l_1$-minimization problems. It also provides functions for computing the prox operators that are necessary to solve those problems. As with \pkg{radarmodel}, \pkg{prx} makes extensive use of the \pkg{numpy} package \autocite{numpy}. Each optimization algorithm requires the user to specify the objective functions $F$ and $G$, the linear operators $A$ and $A^*$, the data vector $b$, and algorithm parameters for step size and convergence tolerance. The optimization algorithms can be used to solve any problem with the correct split-objective form, provided that $F$ and $G$ can be specified. These objective functions can be composed from a selection of elemental functions with known gradients and/or prox operators, or entire standard problems like $l_1$-regularized least squares can be solved using specialized functions. The package is designed to be easily-extensible so that if a new objective function is required, it can be implemented in a standard form and used with the optimization routines just like the standard functions. This design has proven effective in testing a variety of algorithms and optimization problems, including ones not originally envisioned.
+
+In contrast to the \pkg{radarmodel} package, the key to efficient computation with \pkg{prx} lies in optimizing the individual algorithms and making them easy to use. All of the enhancements mentioned in Chapter \ref{sparsity_background}, and a few additional ones, are included so that the algorithms converge as quickly as possible. Moreover, all of the required tuning parameters can be specified if required, but the default values work well enough that tuning won't be necessary in most cases. Since the package is written completely in Python, it is easy to examine and modify the code to figure out what is happening behind the scenes, making the implementation far more useful than a computational black box. Special care was taken to provide user-visible documentation that describes each of the optimization routines, gradient and proximal operators, and standard problem formulations in detail, with references included if more information is required. 
+
+\subsection{Algorithm Comparison}
+With a variety of proximal optimization algorithms available to solve the $l_1$-regularized least squares problem, it was necessary to test each algorithm to determine which converges fastest in general when applied with the radar model. Computation time for all of these algorithms is dominated by the evaluation of the forward and adjoint operators of the radar model, so the primary interest is in minimizing the number of iterations required for convergence. Table \ref{tab:prox_alg_comparison} lists the iteration count until convergence for some of the algorithms detailed in Chapter \ref{sparsity_background} and implemented in the \pkg{prx} package. All of the algorithms were applied to the same instance of an $l_1$-regularized least squares problem using the radar model provided by the \pkg{radarmodel} package. The required single pulse of radar data came from the Jicamarca ISR using a minimum peak sidelobe waveform, and it contained scattering from a meteor head echo. Convergence was determined using the same absolute and relative tolerance parameters for all of the algorithms. Regardless of these details, the results are generally descriptive of our experience using these algorithms on actual radar data.
+\begin{table}
+ \renewcommand{\arraystretch}{1.2}
+ \caption[Convergence comparison of proximal optimization algorithms]{\emph{Convergence comparison of proximal optimization algorithms.} The tables list the number of steps until convergence (and backtracking steps, if applicable) for the same instance of $l_1$-regularized least squares.}
+ \label{tab:prox_alg_comparison}
+ \begin{subtable}[t]{0.4\textwidth}
+  \centering
+  \caption{Proximal gradient variations}
+  \label{tab:proximal_gradient}
+  \begin{tabular}{@{}ll@{}}
+   \toprule
+   Method & Iterations\\
+   \midrule
+   Proximal gradient & 4463\\
+   $+$ Acceleration & 2915\\
+   $+$ Adaptive restart & 399\\
+   $+$ Adaptive step & 51 (36)\\
+   $-$ Acceleration & 58 (27)\\
+   \bottomrule
+  \end{tabular}
+ \end{subtable}%
+ \begin{subtable}[t]{0.6\textwidth}
+  \centering
+  \caption{Three different methods}
+  \label{tab:prox_algorithms}
+  \begin{tabular}{@{}ll@{}}
+   \toprule
+   Method & Iterations\\
+   \midrule
+   Accelerated proximal gradient & 51 (36)\\
+   Linearized ADMM (adaptive) & 79 (96)\\
+   PDHG (fixed step) & 4466\\
+   \bottomrule
+  \end{tabular}
+ \end{subtable}
+\end{table}%
+
+Table \ref{tab:proximal_gradient} compares the proximal gradient method with its improvements, each version adding a feature to the last. The unmodified proximal gradient algorithm is somewhat slow to converge, while the accelerated scheme is about a third faster. Adding adaptive restart of the acceleration term brings a significant improvement, dropping the number of steps down an order of magnitude. Adding the adaptive step size scheme drops the number of steps by another order of magnitude, converging in less than a hundred total steps (complete steps and partial backtracking steps). Finally, keeping the adaptive step size but dropping the acceleration scheme just barely increases the number of iterations over the accelerated version, with even fewer backtracks. Because of this vast improvement from step size adjustment, it seems that the radar model coupled with $l_1$-regularized least squares is particularly prone to large variations in the optimal step size. This would appear to be an exceptional requirement, since as far as we are aware, an expanding adaptive step size is included in only one of the available proximal gradient implementations (\pkg{TFOCS}), and it is not well-publicized in the literature. Also of note is how the acceleration scheme only becomes really effective once adaptive restart is allowed, but even that improvement is inconsequential compared to having an adaptive step size.
+
+The accelerated and fully adaptive proximal gradient method is compared to linearized ADMM and PDHG in Table \ref{tab:prox_algorithms} (plain ADMM is not applicable to this $l_1$-regularized least squares problems because of the affine transformation). Given that both linearized ADMM and PDHG can handle more general problems, it is not surprising that they both take longer to converge than the optimized proximal gradient method. The linearized ADMM method uses an adaptive step size scheme of our own devising that is similar to that for the proximal gradient method. Considering the importance of the adaptive step for the latter method, it is no wonder that linearized ADMM converges much faster than the fixed step PDHG. The PDHG algorithm used here is the basic one; it can be improved with adaptive parameter selection, but that implementation was deemed unnecessary for now given the relative success of the proximal gradient method. It is interesting, and probably not a coincidence, that both of the fixed step algorithms (PDHG and basic proximal gradient) converge in almost the same number of iterations. This fact not only shows how closely-related all of these algorithms are, but it also emphasizes just how step-size dependent this problem is.
+
+Limited performance testing was also done for the basis pursuit with denoising and Dantzig selector problems, with both using the linearized ADMM algorithm. Approximately equivalent sparse answers can be achieved with appropriate parameter selection, but both algorithms require more iterations to converge than $l_1$-regularized least squares. Roughly speaking, basis pursuit with denoising takes about twice as many iterations, while the Dantzig selector takes about ten times as many iterations. Little effort has been put into investigating optimal algorithm parameters for these problems, so it is likely that performance can be improved. Nevertheless, it is unlikely that either will be able to converge faster than $l_1$-regularized least squares using the accelerated proximal gradient method. Given the success of that combination, we feel justified in continuing to use it almost exclusively.
