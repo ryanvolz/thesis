@@ -3,7 +3,7 @@
 
 %\usepackage[color=blue,width=3pt,height=0.5\baselineskip]{overcolored}
 
-\usepackage[online]{styles/suthesis-2e}
+\usepackage{styles/suthesis-modified}
 
 
 %%%% Packages %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -79,6 +79,7 @@
 \usepackage[neverdecrease]{paralist} % for in-paragraph lists and tightly-spaced lists
 \usepackage{array} % advanced table features like specifying column width
 \usepackage{booktabs} % for cleaner tables
+\usepackage{tabu} % for tables with fixed total width
 \usepackage{algorithmic} % for algorithmic environment
 \algsetup{indent=2em}
 \newcommand{\GIVEN}{\STATE \textbf{given} }
@@ -148,14 +149,19 @@
 \title{Theory and application of sparsity for radar sensing of ionospheric plasma}
 \author{Ryan Volz}
 \dept{Aeronautics and Astronautics}
-\principaladviser{Sigrid Close}
+\principaladvisor{Sigrid Close}
 \firstreader{Philip J. Erickson}
 \secondreader{Mykel Kochenderfer}
+\viceprovost{Patricia J. Gumport}
 \submitdate{December 2014}
-%\copyrightfalse
-%\thesiscopyrightfalse
-%\figurespagefalse
-%\tablespagefalse
+\licensedeclaration{%
+ \begin{tabu} to \textwidth {X[-1,l,m]X[J,m]}
+  \includegraphics{license_cc_by-nc} & This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License. \newline\url{http://creativecommons.org/licenses/by-nc/4.0/}
+ \end{tabu}
+}
+\onlineat{\url{http://purl.stanford.edu/kw265jg4383}}
+\onlinecopyrighttrue
+\completedsignaturetrue
 
 \makeatletter
 \hypersetup{pdftitle=\@title}

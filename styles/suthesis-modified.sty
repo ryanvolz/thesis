@@ -105,17 +105,27 @@
 % Modified May 2014 by Emma Pease
 %   fixed error in the signature page (Stanford University Committee not just University Committee)
 
+% Modified December 2013 by Ryan Volz
+%   add \onlinecopyright toggle to create copyright page with formatting
+%      similar to the online version
+%   add \licensedeclaration and \onlineat commands to provide info for copyright page
+%   add \completedsignature toggle to create signature page with names filled
+%      in and no lines
+%   add \viceprovost command for naming the current vice provost
+%   re-format signature page line width to better match Stanford's example
+%   tweak title page so that the department name appears on its own line
+
 %%%%%
 %%%%%   PRELIMS
 %%%%%
 
-\ProvidesPackage{suthesis-2e}[2014/05/26]
+\ProvidesPackage{suthesis-modified}[2014/12/08]
 
 
 
 %%\typeout{Document Style Option `suthesis' for latex2e <$Date: 9/17/2008 $>.}
 \typeout{Note that this tries to fulfill the Stanford Thesis
-  requirements but it is unofficial}
+  requirements but it is unofficial. Modified from `suthesis-2e'.}
 
 % First thing we do is make sure that report has been loaded.  A
 % common error is to try to use suthesis as a documentstyle.
@@ -231,9 +241,14 @@ The following switches allow for special title pages (not all are current)
         \secondreader{the second reader's name}
         \thirdreader{optional third reader's name}
         \fourthreader{optional fourth reader's name}
+        \viceprovost{optional Vice Provost name for completed signature page}
         \setlength{\signaturespace}{.5in}
                 - default is .5in, can be adjusted to fit all
                 signatures in one page
+        \licensedeclaration{text to use as a license declaration,
+          put on online-style copyright page}
+        \onlineat{link to permanent online location of dissertation,
+          put on online-style copyright page}
         \submitdate{month year in which submitted to GPO}
                 - date LaTeX'd if omitted
         \copyrightyear{year degree conferred (next year if submitted
@@ -245,6 +260,13 @@ The following switches allow for special title pages (not all are current)
                 - produces the style of copyright page listed by the
                 Thesis Office or the style that everyone else uses
                 (Thesis office by default).
+        \onlinecopyrighttrue or \onlinecopyrightfalse
+                - emulates the style of copyright page produced by online submission,
+                overriding \thesiscopyright toggles.
+                (false by default)
+        \completedsignaturetrue or \completedsignaturefalse
+                - format signature page with names filled in and no signature lines
+                  (false by default)
         \figurespagetrue or \figurespagefalse
                 - produce or don't produce a List of Figures page
                   (true by default)
@@ -326,6 +348,9 @@ smaller print.
 \def\secondreader#1{\gdef\@secondreader{#1}}
 \def\thirdreader#1{\gdef\@thirdreader{#1}}
 \def\fourthreader#1{\gdef\@fourthreader{#1}}
+\def\viceprovost#1{\gdef\@viceprovost{#1}}
+\def\licensedeclaration#1{\gdef\@licensedeclaration{#1}}
+\def\onlineat#1{\gdef\@onlineat{#1}}
 \def\submitdate#1{\gdef\@submitdate{#1}}
 \def\copyrightyear#1{\gdef\@copyrightyear{#1}} % \author, \title in report
 % needed only for dual language departments to choose the language
@@ -336,6 +361,9 @@ smaller print.
 \def\@coprincipaladviser{*}
 \def\@thirdreader{*}
 \def\@fourthreader{*}
+\def\@viceprovost{Patricia J. Gumport}
+\def\@licensedeclaration{*}
+\def\@onlineat{*}
 \def\@submitdate{\ifcase\the\month\or
   January\or February\or March\or April\or May\or June\or
   July\or August\or September\or October\or November\or December\fi
@@ -350,6 +378,8 @@ smaller print.
 \fi
 \newif\ifcopyright \newif\iffigurespage \newif\iftablespage
 \newif\ifthesiscopyright
+\newif\ifonlinecopyright
+\newif\ifcompletedsignature
 
 
 \copyrighttrue
@@ -453,6 +483,17 @@ AND THE COMMITTEE ON GRADUATE STUDIES}
         \end{center}
         \vfill\newpage}
 
+\def\onlinecopyrightpage{%
+        \null\vfill
+        \begin{singlespace}
+        \begin{center}
+                \copyright\ \@copyrightyear\ by \@author. All Rights Reserved.\\
+                \if*\@licensedeclaration \else\vspace{0.5in}\@licensedeclaration\\\fi
+                \if*\@onlineat \else\vspace{0.5in}This dissertation is online at: \@onlineat\\\fi
+        \end{center}
+        \end{singlespace}
+        \vfill\newpage}
+
 
 
 
@@ -469,11 +510,17 @@ I certify that I have read this dissertation and that, in my opinion,
 it is fully adequate in scope and quality as a dissertation for the degree
 of Doctor of Philosophy.
 \par
-\vspace{\signaturespace}
-%\hbox to 4in{\hfil\shortstack{\vrule width 3in height 0.4pt\\ #1}}
-%\hbox to 5in{\hfil\begin{tabular}{@{}l@{}}\vrule width 3in height
-\hbox to 6in{\hfil\begin{tabular}{@{}l@{}}\vrule width 3in height % RV
-    0.4pt depth 0pt\\ #1\end{tabular}}
+\ifcompletedsignature
+ \begin{flushright}
+  \textbf{#1}
+ \end{flushright}
+\else
+ \vspace{\signaturespace}
+ %\hbox to 4in{\hfil\shortstack{\vrule width 3in height 0.4pt\\ #1}}
+ %\hbox to 5in{\hfil\begin{tabular}{@{}l@{}}\vrule width 3in height
+ \hbox to 6in{\hfil\begin{tabular}{@{}l@{}}\vrule width 3in height % RV
+     0.4pt depth 0pt\\ #1\end{tabular}}
+\fi
 \end{minipage}
 \end{flushright}}
 
@@ -485,10 +532,16 @@ of Doctor of Philosophy.
 %\hfill Approved for the Stanford University Committee on Graduate Studies
 Approved for the Stanford University Committee on Graduate Studies % RV
 \par
-\vspace{\signaturespace}
-%\hbox to 6in{\hfil\begin{tabular}{@{}l@{}}\vrule width 3in height
-\hbox to 6in{\hfil\begin{tabular}{@{}l@{}}\vrule width 3in height % RV
-    0.4pt depth 0pt\end{tabular}}
+\ifcompletedsignature
+ \begin{flushright}
+  \textbf{\@viceprovost, Vice Provost for Graduate Education}
+ \end{flushright}
+\else
+ \vspace{\signaturespace}
+ %\hbox to 5in{\hfil\begin{tabular}{@{}l@{}}\vrule width 3in height
+ \hbox to 6in{\hfil\begin{tabular}{@{}l@{}}\vrule width 3in height % RV
+     0.4pt depth 0pt\end{tabular}}
+\fi
 \end{minipage}
 \end{flushright}}
 
@@ -499,7 +552,31 @@ Approved for the Stanford University Committee on Graduate Studies % RV
 \def\thepage{}
 \thispagestyle{myheadings}
 \markboth{\rm \@author}{\rm \@author}\fi
-\signature{(\@principaladviser)\quad Principal \advis@r}
+\ifcompletedsignature
+ \signature{\@principaladviser, Principal \advis@r}
+  \vfill
+% if second principal advisor
+        \if*\@coprincipaladviser \else
+        \signature{\@coprincipaladviser, Principal \advis@r}
+        \vfill\fi
+        \if*\@firstreader \else
+        \signature{\@firstreader}
+        \vfill\fi
+        \if*\@secondreader \else
+        \signature{\@secondreader}
+        \vfill\fi
+% if thirdreader then do \signature\@thirdreader \vfill
+        \if*\@thirdreader \else
+        \signature{\@thirdreader}
+        \vfill\fi
+% if fourthreader then do \signature\@fourthreader \vfill
+        \if*\@fourthreader \else
+        \signature{\@fourthreader}
+        \vfill\vfill\fi
+ \ucgssignature
+ \vfill\vfill\vfill\vfill
+\else
+ \signature{(\@principaladviser)\quad Principal \advis@r}
   \vfill
 % if second principal advisor
         \if*\@coprincipaladviser \else
@@ -519,7 +596,8 @@ Approved for the Stanford University Committee on Graduate Studies % RV
         \if*\@fourthreader \else
         \signature{(\@fourthreader)}
         \vfill\fi
-\ucgssignature
+ \ucgssignature
+\fi
 }
 
 \def\onlinesignature{
@@ -536,7 +614,7 @@ Approved for the Stanford University Committee on Graduate Studies % RV
 % must be incremented
 % signature page should come at end
         \ifonline\setcounter{page}{4}\else
-        \ifcopyright\ifthesiscopyright\thesiscopyrightpage\else\tradcopyrightpage\fi\fi
+        \ifcopyright\ifonlinecopyright\onlinecopyrightpage\else\ifthesiscopyright\thesiscopyrightpage\else\tradcopyrightpage\fi\fi\fi
         \signaturepage\fi
         \cleardoublepage}
 
